@@ -18,13 +18,14 @@ html,body { margin:0; height:100%; overflow:hidden; background:#050505; color:#f
   background-image: radial-gradient(#fff 1px, transparent 1px); background-size: 3px 3px; }
 .wrap { position:fixed; inset:0; display:grid; grid-template-rows:1fr auto; padding: calc(16px + env(safe-area-inset-top)) 0 calc(14px + env(safe-area-inset-bottom)); }
 
-.field { position:relative; display:grid; grid-template-rows:auto 1fr; align-content:start; gap:18px; padding:26px 22px 0; }
+.field { position:relative; height:100%; min-height:0; padding:26px 22px 0; }
 
-#wave { display:block; width:100%; height:100%; min-height:150px; }
+.plate { position:absolute; left:22px; right:22px; top:44px; bottom:26px; }
+#wave { display:block; width:100%; height:100%; }
 
-.end { font-size:11.5px; letter-spacing:.02em; color:var(--mute); transition:color .4s ease; }
-.end.a { grid-row:1; justify-self:start; }
-.end.b { grid-row:1; justify-self:end; }
+.end { position:absolute; top:20px; font-size:11.5px; letter-spacing:.02em; color:var(--mute); transition:color .4s ease; }
+.end.a { left:22px; }
+.end.b { right:22px; }
 .end.on { color:var(--lime); }
 
 .panel { border-top:1px solid var(--line); padding:16px 22px 0; display:grid; gap:14px; }
@@ -74,7 +75,7 @@ button { font-family:inherit; }
   <div class="field" id="field">
     <span class="end a on" id="endA">до</span>
     <span class="end b" id="endB">после</span>
-    <canvas id="wave"></canvas>
+    <div class="plate"><canvas id="wave"></canvas></div>
   </div>
 
   <div class="panel">
@@ -266,20 +267,25 @@ document.querySelectorAll('.tracks [data-i]').forEach((b) => {
 });
 
 // ---- линия сигнала: тонкая линия, живущая от громкости
+let VW = 1, VH = 1;
 function size() {
+  const r = cv.getBoundingClientRect();
   const dpr = Math.min(LOW ? 1.5 : 2, devicePixelRatio || 1);
-  cv.width = Math.floor(cv.clientWidth * dpr);
-  cv.height = Math.floor(cv.clientHeight * dpr);
+  VW = Math.max(1, Math.round(r.width));
+  VH = Math.max(1, Math.round(r.height));
+  cv.width = Math.round(VW * dpr);
+  cv.height = Math.round(VH * dpr);
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 addEventListener('resize', size);
+addEventListener('orientationchange', () => setTimeout(size, 250));
 
 let amp = 0, ph = 0, last = 0;
 function draw(t) {
   vraf = requestAnimationFrame(draw);
   if (LOW && t - last < 33) return;
   last = t;
-  const w = cv.clientWidth, h = cv.clientHeight;
+  const w = VW, h = VH;
   ph += .012;
   g.clearRect(0, 0, w, h);
   if (analyser && playing) analyser.getByteTimeDomainData(freq);
@@ -323,7 +329,10 @@ function draw(t) {
 
 }
 
-size(); draw(0); setV(0);
+size(); setV(0);
+requestAnimationFrame(() => { size(); draw(0); });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { size(); });
+setTimeout(size, 600);
 setTimeout(() => load(idx).catch(() => {}), 300);
 </script>
 </body>
